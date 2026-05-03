@@ -40,8 +40,16 @@ import {
   BarChart3,
   Bot,
   User,
-  StopCircle
+  StopCircle,
+  Moon,
+  Sun,
+  Keyboard,
+  Download,
+  Printer,
+  Flame,
 } from 'lucide-react';
+import confetti from 'canvas-confetti';
+import { useTheme } from 'next-themes';
 import { toast, Toaster } from 'sonner';
 import {
   analyzeResumeForRole,
@@ -51,6 +59,52 @@ import {
 } from '@/lib/gemini';
 import { redirectToStripeCheckout, stripePromise } from '@/lib/stripeCheckout';
 import { extractResumeText, MAX_RESUME_BYTES } from '@/lib/extractResumeText';
+import { loadActivityStreak, recordActivity } from '@/lib/activityStreak';
+import {
+  buildResumeAnalysisMarkdown,
+  downloadTextFile,
+  openPrintableAnalysis,
+} from '@/lib/exportResumeAnalysis';
+
+const PROFILE_STORAGE_KEY = 'careerAssistant_profile_v1';
+
+type UserProfilePersisted = {
+  displayName: string;
+  applicationsCount: number;
+};
+
+/** Maps legacy demo default saved in older browsers so UI matches shipped defaults. */
+function migrateStoredDisplayName(rawName: string): string {
+  const t = rawName.trim();
+  if (!t) return 'Viraj Parmar';
+  if (/^vinay\s+kumar$/i.test(t)) return 'Viraj Parmar';
+  return t;
+}
+
+function loadPersistedProfile(): UserProfilePersisted {
+  try {
+    const raw = localStorage.getItem(PROFILE_STORAGE_KEY);
+    if (!raw) return { displayName: 'Viraj Parmar', applicationsCount: 0 };
+    const p = JSON.parse(raw) as Record<string, unknown>;
+    const parsed =
+      typeof p.displayName === 'string' && p.displayName.trim() ? p.displayName.trim() : 'Viraj Parmar';
+    const displayName = migrateStoredDisplayName(parsed);
+    const applicationsCount =
+      typeof p.applicationsCount === 'number' && p.applicationsCount >= 0 ? Math.floor(p.applicationsCount) : 0;
+    const profile = { displayName, applicationsCount };
+    // Rewrite storage once when migrating so refreshes stay consistent without relying on effects only.
+    if (parsed !== displayName) {
+      try {
+        localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profile));
+      } catch {
+        /* ignore */
+      }
+    }
+    return profile;
+  } catch {
+    return { displayName: 'Viraj Parmar', applicationsCount: 0 };
+  }
+}
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -125,6 +179,15 @@ export default function App() {
   const [resumeAnalysisResult, setResumeAnalysisResult] = useState<ResumeAnalysisResult | null>(null);
   const [interviewQuestionsLoading, setInterviewQuestionsLoading] = useState(false);
   const [interviewQuestionBank, setInterviewQuestionBank] = useState<string[]>([]);
+  const [userProfile, setUserProfile] = useState<UserProfilePersisted>(() => loadPersistedProfile());
+  const [mounted, setMounted] = useState(false);
+  const { resolvedTheme, setTheme } = useTheme();
+  const [showShortcutsModal, setShowShortcutsModal] = useState(false);
+  const [activityStreak, setActivityStreak] = useState(() => loadActivityStreak());
+  const [showPrivacyDetails, setShowPrivacyDetails] = useState(false);
+  const [answerSeconds, setAnswerSeconds] = useState(0);
+
+  const bumpActivityStreak = () => setActivityStreak(recordActivity());
 
   const jobRoles = [
     'Software Engineer',
@@ -198,6 +261,11 @@ export default function App() {
         read: false,
       };
       setNotifications((prev) => [newNotification, ...prev]);
+      setUserProfile((p) => ({ ...p, applicationsCount: p.applicationsCount + 1 }));
+      bumpActivityStreak();
+      if (result.score >= 8) {
+        void confetti({ particleCount: 140, spread: 72, origin: { y: 0.72 }, colors: ['#a855f7', '#ec4899', '#22c55e'] });
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Analysis failed';
       toast.error(msg, { id: 'analyze' });
@@ -277,14 +345,48 @@ export default function App() {
   };
 
   const clearAllNotifications = () => {
+    const snapshot = [...notifications];
     setNotifications([]);
-    toast.success('All notifications cleared');
+    toast.success('All notifications cleared', {
+      duration: 8000,
+      action: {
+        label: 'Undo',
+        onClick: () => setNotifications(snapshot),
+      },
+    });
   };
 
   const unreadCount = notifications.filter(n => !n.read).length;
+  const greetingFirstName = userProfile.displayName.trim().split(/\s+/)[0] || 'there';
+  const profileAvatarLetter = (userProfile.displayName.trim()[0] ?? '?').toUpperCase();
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(userProfile));
+    } catch {
+      /* quota / private mode */
+    }
+  }, [userProfile]);
 
   useEffect(() => {
     void stripePromise;
+  }, []);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (el?.closest('input, textarea, select, [contenteditable="true"]')) return;
+      if (e.key === '?') {
+        e.preventDefault();
+        setShowShortcutsModal(true);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
   }, []);
 
   useEffect(() => {
@@ -563,6 +665,7 @@ export default function App() {
         };
 
         setInterviewSessions((prev) => [newSession, ...prev]);
+        bumpActivityStreak();
         toast.success(`Interview complete! Your score: ${averageScore}%`);
       }
     } finally {
@@ -586,6 +689,7 @@ export default function App() {
       };
 
       setInterviewSessions([newSession, ...interviewSessions]);
+      bumpActivityStreak();
     }
 
     setInterviewActive(false);
@@ -612,6 +716,16 @@ export default function App() {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!interviewActive || interviewQuestionsLoading || isThinking) return;
+    const id = window.setInterval(() => setAnswerSeconds((s) => s + 1), 1000);
+    return () => window.clearInterval(id);
+  }, [interviewActive, interviewQuestionsLoading, isThinking]);
+
+  useEffect(() => {
+    setAnswerSeconds(0);
+  }, [currentQuestionIndex, interviewActive]);
+
+  useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setDropdownOpen(false);
@@ -630,6 +744,7 @@ export default function App() {
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        if (showShortcutsModal) setShowShortcutsModal(false);
         if (showPasteDialog) setShowPasteDialog(false);
         if (showScheduleDialog) setShowScheduleDialog(false);
         if (showUpgradeDialog) setShowUpgradeDialog(false);
@@ -651,7 +766,15 @@ export default function App() {
 
     document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
-  }, [showPasteDialog, showScheduleDialog, showEventDialog, showUpgradeDialog, showNotifications, showGoalDialog]);
+  }, [
+    showShortcutsModal,
+    showPasteDialog,
+    showScheduleDialog,
+    showEventDialog,
+    showUpgradeDialog,
+    showNotifications,
+    showGoalDialog,
+  ]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -772,9 +895,66 @@ export default function App() {
     { time: '4:00 PM', title: 'Networking Event', type: 'event', date: '2026-05-12' }
   ]);
 
+  const interviewsStat =
+    upcomingEvents.filter((e) => e.type === 'interview').length + interviewSessions.length;
+
+  const isLight = mounted && resolvedTheme === 'light';
+  const shellBg = isLight
+    ? 'bg-white/90 border-violet-200/50 text-slate-900'
+    : 'bg-slate-900/50 border-purple-500/20 text-white';
+  const formatAnswerElapsed = (sec: number) => {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white">
-      <Toaster position="top-right" theme="dark" richColors />
+    <div
+      className={`app-root min-h-screen transition-colors duration-300 ${
+        isLight
+          ? 'bg-gradient-to-br from-slate-100 via-violet-100 to-slate-200 text-slate-900'
+          : 'bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white'
+      }`}
+    >
+      <Toaster position="top-right" theme={isLight ? 'light' : 'dark'} richColors />
+
+      {/* Keyboard shortcuts */}
+      {showShortcutsModal && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowShortcutsModal(false);
+          }}
+        >
+          <div className="bg-slate-800 border border-purple-500/30 rounded-2xl shadow-2xl max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Keyboard className="w-6 h-6 text-purple-400" />
+                <h3 className="text-lg font-semibold">Keyboard shortcuts</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowShortcutsModal(false)}
+                className="p-2 rounded-lg hover:bg-slate-700/80"
+                aria-label="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <ul className="space-y-3 text-sm text-gray-300">
+              <li className="flex justify-between gap-4">
+                <span>Open this panel</span>
+                <kbd className="px-2 py-0.5 rounded bg-slate-900 border border-purple-500/30 font-mono text-xs">?</kbd>
+              </li>
+              <li className="flex justify-between gap-4">
+                <span>Close dialogs / menus</span>
+                <kbd className="px-2 py-0.5 rounded bg-slate-900 border border-purple-500/30 font-mono text-xs">Esc</kbd>
+              </li>
+            </ul>
+            <p className="text-xs text-gray-500 mt-4">Shortcuts are disabled while typing in fields.</p>
+          </div>
+        </div>
+      )}
 
       {/* Paste Resume Text Dialog */}
       {showPasteDialog && (
@@ -1255,7 +1435,9 @@ export default function App() {
       )}
 
       {/* Sidebar */}
-      <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-slate-900/50 backdrop-blur-xl border-r border-purple-500/20 flex flex-col">
+      <aside
+        className={`fixed left-0 top-0 z-40 h-screen w-64 backdrop-blur-xl border-r flex flex-col ${shellBg}`}
+      >
         <div className="p-6 border-b border-purple-500/20">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
@@ -1317,14 +1499,32 @@ export default function App() {
           </div>
         </div>
 
-        <div className="p-4 flex items-center gap-3 border-t border-purple-500/20">
+        <div className="p-4 flex items-center gap-2 border-t border-purple-500/20">
           <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-sm font-bold">
-            V
+            {profileAvatarLetter}
           </div>
-          <div className="flex-1">
-            <p className="text-sm font-medium">Vinay</p>
-            <p className="text-xs text-gray-400">Free Plan</p>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate">{greetingFirstName}</p>
+            <p className="text-xs text-gray-400 truncate">{jobRole}</p>
           </div>
+          <button
+            type="button"
+            onClick={() => setTheme(isLight ? 'dark' : 'light')}
+            className="w-9 h-9 rounded-lg hover:bg-purple-500/20 transition-colors flex items-center justify-center shrink-0"
+            title={isLight ? 'Dark mode' : 'Light mode'}
+            aria-label="Toggle theme"
+          >
+            {isLight ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5 text-amber-300" />}
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowShortcutsModal(true)}
+            className="w-9 h-9 rounded-lg hover:bg-purple-500/20 transition-colors flex items-center justify-center shrink-0"
+            title="Keyboard shortcuts (?)"
+            aria-label="Keyboard shortcuts"
+          >
+            <Keyboard className="w-5 h-5 text-gray-400 hover:text-white" />
+          </button>
           <div className="relative notification-container">
             <button
               onClick={() => setShowNotifications(!showNotifications)}
@@ -1800,8 +2000,12 @@ export default function App() {
                         className="w-full bg-slate-900/50 border border-purple-500/30 rounded-lg px-4 py-3 text-sm resize-none focus:outline-none focus:border-purple-500 transition-colors min-h-[150px] disabled:opacity-50"
                       />
                       <div className="flex items-center justify-between mt-3">
-                        <p className="text-xs text-gray-400">
-                          {userAnswer.trim().split(' ').filter(w => w).length} words
+                        <p className="text-xs text-gray-400 flex flex-wrap items-center gap-x-4 gap-y-1">
+                          <span>{userAnswer.trim().split(' ').filter(w => w).length} words</span>
+                          <span className="flex items-center gap-1.5 text-purple-300">
+                            <Clock className="w-3.5 h-3.5" />
+                            {formatAnswerElapsed(answerSeconds)}
+                          </span>
                         </p>
                         <button
                           onClick={handleSubmitAnswer}
@@ -1897,16 +2101,46 @@ export default function App() {
           {activeTab === 'settings' && (
             <div className="mb-8">
               <h2 className="text-4xl font-bold mb-2">Settings</h2>
-              <p className="text-purple-200 mb-8">Manage your account and preferences</p>
+              <p className="text-purple-200 mb-8">Manage your profile and preferences</p>
 
-              <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-8 border border-purple-500/20">
-                <div className="text-center py-12">
-                  <Settings className="w-16 h-16 mx-auto mb-4 text-purple-400 opacity-50" />
-                  <h3 className="text-xl font-semibold mb-2">Settings Coming Soon</h3>
-                  <p className="text-gray-400 mb-6">Customize your experience and manage your account settings.</p>
+              <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-8 border border-purple-500/20 max-w-xl">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-14 h-14 bg-gradient-to-br from-purple-600 to-pink-600 rounded-full flex items-center justify-center text-xl font-bold shrink-0">
+                    {profileAvatarLetter}
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold">Profile</h3>
+                    <p className="text-sm text-gray-400">Shown on your dashboard and sidebar</p>
+                  </div>
+                </div>
+
+                <label className="block text-sm font-medium text-purple-200 mb-2">Display name</label>
+                <input
+                  type="text"
+                  value={userProfile.displayName}
+                  onChange={(e) => setUserProfile((p) => ({ ...p, displayName: e.target.value }))}
+                  className="w-full bg-slate-900/50 border border-purple-500/30 rounded-xl px-4 py-3 text-sm mb-6 focus:outline-none focus:border-purple-500 transition-colors"
+                  placeholder="Your name"
+                  autoComplete="name"
+                />
+
+                <div className="rounded-xl bg-slate-900/40 border border-purple-500/20 p-4 mb-6">
+                  <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Target role</p>
+                  <p className="text-white font-medium">{jobRole}</p>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Change this from the job role dropdown on the Dashboard or Resume Builder tab — it drives AI resume analysis.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap gap-3 items-center justify-between pt-2 border-t border-purple-500/15">
+                  <div className="text-sm text-gray-400">
+                    Applications logged:{' '}
+                    <span className="text-white font-semibold">{userProfile.applicationsCount}</span>
+                  </div>
                   <button
+                    type="button"
                     onClick={() => setActiveTab('dashboard')}
-                    className="bg-purple-600 hover:bg-purple-700 px-6 py-3 rounded-lg font-medium transition-colors"
+                    className="bg-purple-600 hover:bg-purple-700 px-5 py-2.5 rounded-lg text-sm font-medium transition-colors"
                   >
                     Back to Dashboard
                   </button>
@@ -1919,8 +2153,37 @@ export default function App() {
           <>
           {/* Header */}
           <div className="mb-8">
-            <h2 className="text-4xl font-bold mb-2">Hi, Vinay! 👋</h2>
+            <h2 className="text-4xl font-bold mb-2">Hi, {greetingFirstName}! 👋</h2>
             <p className="text-purple-200">Ready to take your career to the next level? Let's see what we can do for your goal job.</p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+            <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-5 border border-orange-500/20 flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-orange-500/20 flex items-center justify-center">
+                <Flame className="w-6 h-6 text-orange-400" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-400">Activity streak</p>
+                <p className="text-2xl font-bold">
+                  {activityStreak.streak} <span className="text-base font-normal text-gray-400">day{activityStreak.streak === 1 ? '' : 's'}</span>
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {activityStreak.activeDaysThisWeek.length} active day
+                  {activityStreak.activeDaysThisWeek.length === 1 ? '' : 's'} this week
+                </p>
+              </div>
+            </div>
+            <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-5 border border-purple-500/20 flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                <Zap className="w-6 h-6 text-purple-400" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-400">Keep the momentum</p>
+                <p className="text-sm text-gray-300">
+                  Analyze a resume, log an application, or finish a mock interview to build your streak.
+                </p>
+              </div>
+            </div>
           </div>
 
           {/* Resume Upload Section */}
@@ -2099,6 +2362,23 @@ export default function App() {
                   <p className="text-xs text-center text-gray-400 mt-3">
                     AI will analyze and generate insights
                   </p>
+                  <div className="mt-4 text-left">
+                    <button
+                      type="button"
+                      onClick={() => setShowPrivacyDetails((o) => !o)}
+                      className="text-xs text-purple-400 hover:text-purple-300 transition-colors"
+                    >
+                      {showPrivacyDetails ? 'Hide' : 'What we send to the AI'}
+                    </button>
+                    {showPrivacyDetails && (
+                      <p className="text-xs text-gray-500 mt-2 leading-relaxed">
+                        Your resume text is sent to Google&apos;s Gemini API (trimmed to the first 14,000 characters)
+                        along with your selected job role. The model returns a score and tips only — we don&apos;t
+                        store your resume on a server in this demo; it stays in your browser session unless you
+                        export it.
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -2135,12 +2415,40 @@ export default function App() {
           {/* Analysis Results */}
           {showAnalysis && (
             <div className="mb-8 animate-[fadeIn_0.5s_ease-in]">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
               <h3 className="text-2xl font-semibold">Your Analysis Results</h3>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="text-sm text-purple-300 bg-purple-500/20 px-3 py-1 rounded-full">
                   Analyzed for: {jobRole}
                 </span>
+                {resumeAnalysisResult && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const md = buildResumeAnalysisMarkdown(jobRole, resumeAnalysisResult);
+                        const safe = jobRole.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-_]/g, '');
+                        downloadTextFile(`resume-analysis-${safe}.md`, md, 'text/markdown;charset=utf-8');
+                        toast.success('Markdown downloaded');
+                      }}
+                      className="text-sm flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700/80 hover:bg-slate-600 border border-purple-500/30 transition-colors"
+                    >
+                      <Download className="w-4 h-4" />
+                      Export .md
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        openPrintableAnalysis(jobRole, resumeAnalysisResult);
+                        toast.info('Use your browser print dialog → Save as PDF');
+                      }}
+                      className="text-sm flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700/80 hover:bg-slate-600 border border-purple-500/30 transition-colors"
+                    >
+                      <Printer className="w-4 h-4" />
+                      Print / PDF
+                    </button>
+                  </>
+                )}
                 <button
                   onClick={() => {
                     setShowAnalysis(false);
@@ -2279,28 +2587,52 @@ export default function App() {
       </main>
 
       {/* Right Sidebar */}
-      <aside className="fixed right-0 top-0 h-screen w-80 bg-slate-900/50 backdrop-blur-xl border-l border-purple-500/20 p-6 overflow-y-auto">
+      <aside
+        className={`fixed right-0 top-0 h-screen w-80 backdrop-blur-xl border-l p-6 overflow-y-auto ${shellBg}`}
+      >
         {/* Profile Section */}
         <div className="mb-6">
           <div className="bg-gradient-to-br from-purple-600 to-pink-600 rounded-2xl p-6 text-center relative">
-            {upcomingEvents.length > 0 && (
-              <div className="absolute top-4 right-4 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-xs font-bold border-2 border-white">
-                {upcomingEvents.length}
+            {unreadCount > 0 && (
+              <div
+                className="absolute top-4 right-4 min-w-[1.5rem] h-6 px-1 bg-green-500 rounded-full flex items-center justify-center text-xs font-bold border-2 border-white"
+                title={`${unreadCount} unread notification${unreadCount === 1 ? '' : 's'}`}
+              >
+                {unreadCount > 99 ? '99+' : unreadCount}
               </div>
             )}
             <div className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-full mx-auto mb-4 flex items-center justify-center text-3xl font-bold">
-              V
+              {profileAvatarLetter}
             </div>
-            <h3 className="font-semibold text-lg mb-1">Vinay Kumar</h3>
-            <p className="text-sm text-purple-200 mb-4">Software Engineer</p>
+            <h3 className="font-semibold text-lg mb-1">{userProfile.displayName.trim() || 'Your name'}</h3>
+            <p className="text-sm text-purple-200 mb-4">{jobRole}</p>
             <div className="flex gap-2 justify-center">
-              <div className="bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2 flex-1 hover:bg-white/15 transition-colors cursor-pointer" title="Total job applications submitted">
+              <button
+                type="button"
+                onClick={() => {
+                  const prev = userProfile.applicationsCount;
+                  setUserProfile((p) => ({ ...p, applicationsCount: p.applicationsCount + 1 }));
+                  bumpActivityStreak();
+                  toast.success('Logged a job application (+1)', {
+                    duration: 8000,
+                    action: {
+                      label: 'Undo',
+                      onClick: () => setUserProfile((p) => ({ ...p, applicationsCount: prev })),
+                    },
+                  });
+                }}
+                className="bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2 flex-1 hover:bg-white/15 transition-colors text-left"
+                title="Includes analyses you run plus taps here to log submissions"
+              >
                 <p className="text-xs text-purple-200">Applications</p>
-                <p className="text-lg font-bold">24</p>
-              </div>
-              <div className="bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2 flex-1 hover:bg-white/15 transition-colors cursor-pointer" title="Scheduled interviews">
+                <p className="text-lg font-bold">{userProfile.applicationsCount}</p>
+              </button>
+              <div
+                className="bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2 flex-1 text-left"
+                title="Calendar interviews scheduled plus mock interview sessions completed"
+              >
                 <p className="text-xs text-purple-200">Interviews</p>
-                <p className="text-lg font-bold">{upcomingEvents.filter(e => e.type === 'interview').length}</p>
+                <p className="text-lg font-bold">{interviewsStat}</p>
               </div>
             </div>
           </div>

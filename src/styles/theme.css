@@ -173,6 +173,20 @@
     line-height: 1.5;
   }
 
+  /* Light theme: improve contrast on legacy slate utility classes inside the app shell */
+  html.light .app-root .text-gray-300 {
+    color: rgb(71 85 105);
+  }
+  html.light .app-root .text-gray-400 {
+    color: rgb(100 116 139);
+  }
+  html.light .app-root .text-purple-200 {
+    color: rgb(91 33 182);
+  }
+  html.light .app-root .text-purple-300 {
+    color: rgb(109 40 217);
+  }
+
   input {
     font-size: var(--text-base);
     font-weight: var(--font-weight-normal);
