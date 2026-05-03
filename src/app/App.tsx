@@ -70,6 +70,7 @@ import {
   saveColorPalette,
   type ColorPaletteId,
 } from '@/lib/colorPalettePreference';
+import brandBanner from '@/assets/brand-banner.png';
 
 const PROFILE_STORAGE_KEY = 'careerAssistant_profile_v1';
 
@@ -1445,14 +1446,12 @@ export default function App() {
         className="fixed left-0 top-0 z-40 h-screen w-64 border-r flex flex-col ui-shell-aside-l"
       >
         <div className="p-6 ui-border-b">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 ui-logo-grad rounded-lg flex items-center justify-center">
-              <Zap className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="font-semibold">AI Career Assistant</h1>
-              <p className="text-xs ui-text-soft">Your success partner</p>
-            </div>
+          <div className="overflow-hidden rounded-xl">
+            <img
+              src={brandBanner}
+              alt="AI Career Assistant logo"
+              className="w-full h-28 object-contain object-center brightness-125 saturate-125"
+            />
           </div>
         </div>
 
