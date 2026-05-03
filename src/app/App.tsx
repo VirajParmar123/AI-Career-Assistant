@@ -50,15 +50,7 @@ import {
   type ResumeAnalysisResult,
 } from '@/lib/gemini';
 import { redirectToStripeCheckout, stripePromise } from '@/lib/stripeCheckout';
-
-function readFileAsText(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result ?? ''));
-    reader.onerror = () => reject(reader.error ?? new Error('Failed to read file'));
-    reader.readAsText(file);
-  });
-}
+import { extractResumeText, MAX_RESUME_BYTES } from '@/lib/extractResumeText';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -149,41 +141,41 @@ export default function App() {
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
+    if (!file) return;
+    if (file.size > MAX_RESUME_BYTES) {
+      toast.error('File must be 10MB or smaller.');
+      e.target.value = '';
+      return;
     }
+    setSelectedFile(file);
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     const file = e.dataTransfer.files?.[0];
-    if (file && (file.type === 'application/pdf' || file.type === 'text/plain' || file.name.endsWith('.docx'))) {
-      setSelectedFile(file);
+    if (!file) return;
+    if (file.size > MAX_RESUME_BYTES) {
+      toast.error('File must be 10MB or smaller.');
+      return;
     }
+    setSelectedFile(file);
   };
 
   const handleAnalyze = async () => {
     let resumeText = pastedText.trim();
 
     if (!resumeText && selectedFile) {
-      const name = selectedFile.name.toLowerCase();
-      const isText =
-        selectedFile.type === 'text/plain' || name.endsWith('.txt') || name.endsWith('.md');
-      if (isText) {
-        try {
-          resumeText = (await readFileAsText(selectedFile)).trim();
-        } catch {
-          toast.error('Could not read file');
-          return;
-        }
-      } else {
-        toast.error('Paste your resume as text for AI analysis, or upload a .txt file.');
+      try {
+        resumeText = (await extractResumeText(selectedFile)).trim();
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Could not read file';
+        toast.error(msg);
         return;
       }
     }
 
     if (!resumeText) {
-      toast.error('Add resume text or a .txt file to analyze');
+      toast.error('Add resume text or upload a file to analyze');
       return;
     }
 
@@ -1980,7 +1972,6 @@ export default function App() {
                   <input
                     type="file"
                     id="resume-upload"
-                    accept=".pdf,.doc,.docx,.txt"
                     onChange={handleFileUpload}
                     className="hidden"
                   />
@@ -2034,7 +2025,9 @@ export default function App() {
                       ) : (
                         <>
                           <p className="text-sm text-gray-300">Drag & drop your file here, or click to upload</p>
-                          <p className="text-xs text-gray-500">Supports PDF, DOC, DOCX, TXT (Max 10MB)</p>
+                          <p className="text-xs text-gray-500">
+                            PDF, Word (DOCX), and text-based files — or any file we can read as text. Max 10MB
+                          </p>
                         </>
                       )}
                     </div>
