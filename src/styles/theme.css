@@ -180,10 +180,22 @@
   html.light .app-root .text-gray-400 {
     color: rgb(100 116 139);
   }
-  html.light .app-root .text-purple-200 {
+  html.light .app-root .ui-text-dim {
     color: rgb(91 33 182);
   }
-  html.light .app-root .text-purple-300 {
+  html.light .app-root .ui-text-soft {
+    color: rgb(109 40 217);
+  }
+  html.light .app-root[data-palette='navy-teal'] .ui-text-dim {
+    color: rgb(15 118 110);
+  }
+  html.light .app-root[data-palette='navy-teal'] .ui-text-soft {
+    color: rgb(13 148 136);
+  }
+  html.light .app-root[data-palette='charcoal-violet'] .ui-text-dim {
+    color: rgb(91 33 182);
+  }
+  html.light .app-root[data-palette='charcoal-violet'] .ui-text-soft {
     color: rgb(109 40 217);
   }
 

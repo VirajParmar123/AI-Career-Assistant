@@ -65,6 +65,11 @@ import {
   downloadTextFile,
   openPrintableAnalysis,
 } from '@/lib/exportResumeAnalysis';
+import {
+  loadColorPalette,
+  saveColorPalette,
+  type ColorPaletteId,
+} from '@/lib/colorPalettePreference';
 
 const PROFILE_STORAGE_KEY = 'careerAssistant_profile_v1';
 
@@ -186,6 +191,7 @@ export default function App() {
   const [activityStreak, setActivityStreak] = useState(() => loadActivityStreak());
   const [showPrivacyDetails, setShowPrivacyDetails] = useState(false);
   const [answerSeconds, setAnswerSeconds] = useState(0);
+  const [colorPalette, setColorPalette] = useState<ColorPaletteId>(() => loadColorPalette());
 
   const bumpActivityStreak = () => setActivityStreak(recordActivity());
 
@@ -367,6 +373,10 @@ export default function App() {
       /* quota / private mode */
     }
   }, [userProfile]);
+
+  useEffect(() => {
+    saveColorPalette(colorPalette);
+  }, [colorPalette]);
 
   useEffect(() => {
     void stripePromise;
@@ -899,9 +909,6 @@ export default function App() {
     upcomingEvents.filter((e) => e.type === 'interview').length + interviewSessions.length;
 
   const isLight = mounted && resolvedTheme === 'light';
-  const shellBg = isLight
-    ? 'bg-white/90 border-violet-200/50 text-slate-900'
-    : 'bg-slate-900/50 border-purple-500/20 text-white';
   const formatAnswerElapsed = (sec: number) => {
     const m = Math.floor(sec / 60);
     const s = sec % 60;
@@ -910,10 +917,9 @@ export default function App() {
 
   return (
     <div
+      data-palette={colorPalette}
       className={`app-root min-h-screen transition-colors duration-300 ${
-        isLight
-          ? 'bg-gradient-to-br from-slate-100 via-violet-100 to-slate-200 text-slate-900'
-          : 'bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white'
+        isLight ? 'ui-page-light text-slate-900' : 'ui-page-dark text-white'
       }`}
     >
       <Toaster position="top-right" theme={isLight ? 'light' : 'dark'} richColors />
@@ -926,10 +932,10 @@ export default function App() {
             if (e.target === e.currentTarget) setShowShortcutsModal(false);
           }}
         >
-          <div className="bg-slate-800 border border-purple-500/30 rounded-2xl shadow-2xl max-w-md w-full p-6">
+          <div className="bg-slate-800 ui-border-strong rounded-2xl shadow-2xl max-w-md w-full p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <Keyboard className="w-6 h-6 text-purple-400" />
+                <Keyboard className="w-6 h-6 ui-text-icon" />
                 <h3 className="text-lg font-semibold">Keyboard shortcuts</h3>
               </div>
               <button
@@ -944,11 +950,11 @@ export default function App() {
             <ul className="space-y-3 text-sm text-gray-300">
               <li className="flex justify-between gap-4">
                 <span>Open this panel</span>
-                <kbd className="px-2 py-0.5 rounded bg-slate-900 border border-purple-500/30 font-mono text-xs">?</kbd>
+                <kbd className="px-2 py-0.5 rounded bg-slate-900 ui-border-strong font-mono text-xs">?</kbd>
               </li>
               <li className="flex justify-between gap-4">
                 <span>Close dialogs / menus</span>
-                <kbd className="px-2 py-0.5 rounded bg-slate-900 border border-purple-500/30 font-mono text-xs">Esc</kbd>
+                <kbd className="px-2 py-0.5 rounded bg-slate-900 ui-border-strong font-mono text-xs">Esc</kbd>
               </li>
             </ul>
             <p className="text-xs text-gray-500 mt-4">Shortcuts are disabled while typing in fields.</p>
@@ -966,11 +972,11 @@ export default function App() {
             }
           }}
         >
-          <div className="bg-slate-800 border border-purple-500/30 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden animate-[fadeIn_0.2s_ease-out]">
-            <div className="flex items-center justify-between p-6 border-b border-purple-500/20">
+          <div className="bg-slate-800 ui-border-strong rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden animate-[fadeIn_0.2s_ease-out]">
+            <div className="flex items-center justify-between p-6 ui-border-b">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
-                  <Type className="w-5 h-5 text-purple-400" />
+                <div className="w-10 h-10 ui-bg-soft rounded-lg flex items-center justify-center">
+                  <Type className="w-5 h-5 ui-text-icon" />
                 </div>
                 <div>
                   <h3 className="text-xl font-semibold">Paste Your Resume</h3>
@@ -990,27 +996,27 @@ export default function App() {
                 value={pastedText}
                 onChange={(e) => setPastedText(e.target.value)}
                 placeholder="Paste your resume text here..."
-                className="w-full h-80 bg-slate-900/50 border border-purple-500/30 rounded-xl p-4 text-sm resize-none focus:outline-none focus:border-purple-500 transition-colors"
+                className="w-full h-80 bg-slate-900/50 ui-border-strong rounded-xl p-4 text-sm resize-none focus:outline-none ui-focus transition-colors"
               />
               <p className="text-xs text-gray-400 mt-2">
                 {pastedText.trim().length} characters
               </p>
             </div>
 
-            <div className="flex gap-3 p-6 border-t border-purple-500/20">
+            <div className="flex gap-3 p-6 ui-border-t">
               <button
                 onClick={() => {
                   setShowPasteDialog(false);
                   setPastedText('');
                 }}
-                className="flex-1 bg-slate-700/50 hover:bg-slate-700 border border-purple-500/20 rounded-lg py-3 font-medium transition-all"
+                className="flex-1 bg-slate-700/50 hover:bg-slate-700 ui-border rounded-lg py-3 font-medium transition-all"
               >
                 Cancel
               </button>
               <button
                 onClick={handlePasteSubmit}
                 disabled={!pastedText.trim()}
-                className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg py-3 font-medium hover:shadow-lg hover:shadow-purple-500/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 ui-btn-gradient rounded-lg py-3 font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Use This Text
               </button>
@@ -1029,11 +1035,11 @@ export default function App() {
             }
           }}
         >
-          <div className="bg-slate-800 border border-purple-500/30 rounded-2xl shadow-2xl max-w-lg w-full animate-[fadeIn_0.2s_ease-out]">
-            <div className="flex items-center justify-between p-6 border-b border-purple-500/20">
+          <div className="bg-slate-800 ui-border-strong rounded-2xl shadow-2xl max-w-lg w-full animate-[fadeIn_0.2s_ease-out]">
+            <div className="flex items-center justify-between p-6 ui-border-b">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
-                  <Clock className="w-5 h-5 text-purple-400" />
+                <div className="w-10 h-10 ui-bg-soft rounded-lg flex items-center justify-center">
+                  <Clock className="w-5 h-5 ui-text-icon" />
                 </div>
                 <div>
                   <h3 className="text-xl font-semibold">Schedule Interview</h3>
@@ -1058,8 +1064,8 @@ export default function App() {
                       onClick={() => setNewEventType(type)}
                       className={`px-4 py-2 rounded-lg border transition-all capitalize ${
                         newEventType === type
-                          ? 'bg-purple-600 border-purple-500 text-white'
-                          : 'bg-slate-900/50 border-purple-500/30 hover:border-purple-500/60'
+                          ? 'ui-toggle-on'
+                          : 'ui-toggle-off'
                       }`}
                     >
                       {type}
@@ -1075,7 +1081,7 @@ export default function App() {
                   value={newEventTitle}
                   onChange={(e) => setNewEventTitle(e.target.value)}
                   placeholder="e.g., Google Interview Round 1"
-                  className="w-full bg-slate-900/50 border border-purple-500/30 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-purple-500 transition-colors"
+                  className="w-full bg-slate-900/50 ui-border-strong rounded-lg px-4 py-3 text-sm focus:outline-none ui-focus transition-colors"
                 />
               </div>
 
@@ -1086,7 +1092,7 @@ export default function App() {
                     type="date"
                     value={newEventDate}
                     onChange={(e) => setNewEventDate(e.target.value)}
-                    className="w-full bg-slate-900/50 border border-purple-500/30 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-purple-500 transition-colors"
+                    className="w-full bg-slate-900/50 ui-border-strong rounded-lg px-4 py-3 text-sm focus:outline-none ui-focus transition-colors"
                   />
                 </div>
                 <div>
@@ -1095,13 +1101,13 @@ export default function App() {
                     type="time"
                     value={newEventTime}
                     onChange={(e) => setNewEventTime(e.target.value)}
-                    className="w-full bg-slate-900/50 border border-purple-500/30 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-purple-500 transition-colors"
+                    className="w-full bg-slate-900/50 ui-border-strong rounded-lg px-4 py-3 text-sm focus:outline-none ui-focus transition-colors"
                   />
                 </div>
               </div>
             </div>
 
-            <div className="flex gap-3 p-6 border-t border-purple-500/20">
+            <div className="flex gap-3 p-6 ui-border-t">
               <button
                 onClick={() => {
                   setShowScheduleDialog(false);
@@ -1110,14 +1116,14 @@ export default function App() {
                   setNewEventDate('');
                   setNewEventType('interview');
                 }}
-                className="flex-1 bg-slate-700/50 hover:bg-slate-700 border border-purple-500/20 rounded-lg py-3 font-medium transition-all"
+                className="flex-1 bg-slate-700/50 hover:bg-slate-700 ui-border rounded-lg py-3 font-medium transition-all"
               >
                 Cancel
               </button>
               <button
                 onClick={handleScheduleInterview}
                 disabled={!newEventTitle.trim() || !newEventTime.trim() || !newEventDate}
-                className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg py-3 font-medium hover:shadow-lg hover:shadow-purple-500/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-1 ui-btn-gradient rounded-lg py-3 font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 <Plus className="w-4 h-4" />
                 Schedule
@@ -1138,17 +1144,17 @@ export default function App() {
             }
           }}
         >
-          <div className="bg-slate-800 border border-purple-500/30 rounded-2xl shadow-2xl max-w-md w-full animate-[fadeIn_0.2s_ease-out]">
-            <div className="flex items-center justify-between p-6 border-b border-purple-500/20">
+          <div className="bg-slate-800 ui-border-strong rounded-2xl shadow-2xl max-w-md w-full animate-[fadeIn_0.2s_ease-out]">
+            <div className="flex items-center justify-between p-6 ui-border-b">
               <div className="flex items-center gap-3">
                 <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
                   upcomingEvents[selectedEvent].type === 'interview' ? 'bg-green-500/20' :
                   upcomingEvents[selectedEvent].type === 'review' ? 'bg-blue-500/20' :
-                  'bg-purple-500/20'
+                  'ui-bg-soft'
                 }`}>
                   {upcomingEvents[selectedEvent].type === 'interview' ? <MessageSquare className="w-5 h-5 text-green-400" /> :
                    upcomingEvents[selectedEvent].type === 'review' ? <FileText className="w-5 h-5 text-blue-400" /> :
-                   <Users className="w-5 h-5 text-purple-400" />}
+                   <Users className="w-5 h-5 ui-text-icon" />}
                 </div>
                 <div>
                   <h3 className="text-xl font-semibold">{upcomingEvents[selectedEvent].title}</h3>
@@ -1168,7 +1174,7 @@ export default function App() {
 
             <div className="p-6 space-y-4">
               <div className="flex items-center gap-3 p-3 bg-slate-900/50 rounded-lg">
-                <Calendar className="w-5 h-5 text-purple-400" />
+                <Calendar className="w-5 h-5 ui-text-icon" />
                 <div>
                   <p className="text-xs text-gray-400">Date</p>
                   <p className="text-sm font-medium">{new Date(upcomingEvents[selectedEvent].date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
@@ -1176,7 +1182,7 @@ export default function App() {
               </div>
 
               <div className="flex items-center gap-3 p-3 bg-slate-900/50 rounded-lg">
-                <Clock className="w-5 h-5 text-purple-400" />
+                <Clock className="w-5 h-5 ui-text-icon" />
                 <div>
                   <p className="text-xs text-gray-400">Time</p>
                   <p className="text-sm font-medium">{upcomingEvents[selectedEvent].time}</p>
@@ -1184,7 +1190,7 @@ export default function App() {
               </div>
             </div>
 
-            <div className="flex gap-3 p-6 border-t border-purple-500/20">
+            <div className="flex gap-3 p-6 ui-border-t">
               <button
                 onClick={() => handleDeleteEvent(selectedEvent)}
                 className="flex-1 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-lg py-3 font-medium transition-all flex items-center justify-center gap-2 text-red-400"
@@ -1197,7 +1203,7 @@ export default function App() {
                   setShowEventDialog(false);
                   setSelectedEvent(null);
                 }}
-                className="flex-1 bg-purple-600 hover:bg-purple-700 rounded-lg py-3 font-medium transition-all"
+                className="flex-1 ui-btn-solid rounded-lg py-3 font-medium transition-all"
               >
                 Close
               </button>
@@ -1216,18 +1222,18 @@ export default function App() {
             }
           }}
         >
-          <div className="bg-slate-800 border border-purple-500/30 rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden animate-[fadeIn_0.2s_ease-out]">
+          <div className="bg-slate-800 ui-border-strong rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden animate-[fadeIn_0.2s_ease-out]">
             <div className="relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-purple-600/20 to-pink-600/20" />
-              <div className="relative p-6 border-b border-purple-500/20">
+              <div className="absolute inset-0 ui-glow-overlay" />
+              <div className="relative p-6 ui-border-b">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-pink-600 rounded-xl flex items-center justify-center">
+                    <div className="w-12 h-12 ui-profile-grad rounded-xl flex items-center justify-center">
                       <Crown className="w-6 h-6 text-white" />
                     </div>
                     <div>
                       <h3 className="text-2xl font-bold">Upgrade to Pro</h3>
-                      <p className="text-sm text-purple-300">Unlock all premium features</p>
+                      <p className="text-sm ui-text-soft">Unlock all premium features</p>
                     </div>
                   </div>
                   <button
@@ -1261,7 +1267,7 @@ export default function App() {
                 ))}
               </div>
 
-              <div className="bg-gradient-to-r from-purple-600/10 to-pink-600/10 border border-purple-500/30 rounded-xl p-4 mt-6">
+              <div className="ui-tint rounded-xl p-4 mt-6">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm text-gray-400">Monthly</span>
                   <div className="text-right">
@@ -1280,10 +1286,10 @@ export default function App() {
               </div>
             </div>
 
-            <div className="flex gap-3 p-6 border-t border-purple-500/20 shrink-0">
+            <div className="flex gap-3 p-6 ui-border-t shrink-0">
               <button
                 onClick={() => setShowUpgradeDialog(false)}
-                className="flex-1 bg-slate-700/50 hover:bg-slate-700 border border-purple-500/20 rounded-lg py-3 font-medium transition-all"
+                className="flex-1 bg-slate-700/50 hover:bg-slate-700 ui-border rounded-lg py-3 font-medium transition-all"
               >
                 Maybe Later
               </button>
@@ -1297,7 +1303,7 @@ export default function App() {
                     toast.error(msg, { id: 'stripe-checkout', duration: 6000 });
                   }
                 }}
-                className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg py-3 font-medium hover:shadow-lg hover:shadow-purple-500/50 transition-all flex items-center justify-center gap-2"
+                className="flex-1 ui-btn-gradient rounded-lg py-3 font-medium transition-all flex items-center justify-center gap-2"
               >
                 <Crown className="w-4 h-4" />
                 Upgrade Now
@@ -1318,11 +1324,11 @@ export default function App() {
             }
           }}
         >
-          <div className="bg-slate-800 border border-purple-500/30 rounded-2xl shadow-2xl max-w-lg w-full animate-[fadeIn_0.2s_ease-out]">
-            <div className="flex items-center justify-between p-6 border-b border-purple-500/20">
+          <div className="bg-slate-800 ui-border-strong rounded-2xl shadow-2xl max-w-lg w-full animate-[fadeIn_0.2s_ease-out]">
+            <div className="flex items-center justify-between p-6 ui-border-b">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
-                  <Target className="w-5 h-5 text-purple-400" />
+                <div className="w-10 h-10 ui-bg-soft rounded-lg flex items-center justify-center">
+                  <Target className="w-5 h-5 ui-text-icon" />
                 </div>
                 <div>
                   <h3 className="text-xl font-semibold">{editingGoal ? 'Edit Goal' : 'Add New Goal'}</h3>
@@ -1362,8 +1368,8 @@ export default function App() {
                         onClick={() => setNewGoalCategory(cat.value)}
                         className={`px-3 py-2 rounded-lg border transition-all flex flex-col items-center gap-1 ${
                           newGoalCategory === cat.value
-                            ? 'bg-purple-600 border-purple-500 text-white'
-                            : 'bg-slate-900/50 border-purple-500/30 hover:border-purple-500/60'
+                            ? 'ui-toggle-on'
+                            : 'ui-toggle-off'
                         }`}
                       >
                         <Icon className="w-4 h-4" />
@@ -1381,7 +1387,7 @@ export default function App() {
                   value={newGoalTitle}
                   onChange={(e) => setNewGoalTitle(e.target.value)}
                   placeholder="e.g., Learn React Native"
-                  className="w-full bg-slate-900/50 border border-purple-500/30 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-purple-500 transition-colors"
+                  className="w-full bg-slate-900/50 ui-border-strong rounded-lg px-4 py-3 text-sm focus:outline-none ui-focus transition-colors"
                 />
               </div>
 
@@ -1392,7 +1398,7 @@ export default function App() {
                   onChange={(e) => setNewGoalDescription(e.target.value)}
                   placeholder="Add more details about your goal..."
                   rows={3}
-                  className="w-full bg-slate-900/50 border border-purple-500/30 rounded-lg px-4 py-3 text-sm resize-none focus:outline-none focus:border-purple-500 transition-colors"
+                  className="w-full bg-slate-900/50 ui-border-strong rounded-lg px-4 py-3 text-sm resize-none focus:outline-none ui-focus transition-colors"
                 />
               </div>
 
@@ -1402,12 +1408,12 @@ export default function App() {
                   type="date"
                   value={newGoalDeadline}
                   onChange={(e) => setNewGoalDeadline(e.target.value)}
-                  className="w-full bg-slate-900/50 border border-purple-500/30 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-purple-500 transition-colors"
+                  className="w-full bg-slate-900/50 ui-border-strong rounded-lg px-4 py-3 text-sm focus:outline-none ui-focus transition-colors"
                 />
               </div>
             </div>
 
-            <div className="flex gap-3 p-6 border-t border-purple-500/20">
+            <div className="flex gap-3 p-6 ui-border-t">
               <button
                 onClick={() => {
                   setShowGoalDialog(false);
@@ -1417,14 +1423,14 @@ export default function App() {
                   setNewGoalCategory('skill');
                   setNewGoalDeadline('');
                 }}
-                className="flex-1 bg-slate-700/50 hover:bg-slate-700 border border-purple-500/20 rounded-lg py-3 font-medium transition-all"
+                className="flex-1 bg-slate-700/50 hover:bg-slate-700 ui-border rounded-lg py-3 font-medium transition-all"
               >
                 Cancel
               </button>
               <button
                 onClick={handleAddGoal}
                 disabled={!newGoalTitle.trim() || !newGoalDeadline}
-                className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg py-3 font-medium hover:shadow-lg hover:shadow-purple-500/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-1 ui-btn-gradient rounded-lg py-3 font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 <Plus className="w-4 h-4" />
                 {editingGoal ? 'Update Goal' : 'Add Goal'}
@@ -1436,16 +1442,16 @@ export default function App() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed left-0 top-0 z-40 h-screen w-64 backdrop-blur-xl border-r flex flex-col ${shellBg}`}
+        className="fixed left-0 top-0 z-40 h-screen w-64 border-r flex flex-col ui-shell-aside-l"
       >
-        <div className="p-6 border-b border-purple-500/20">
+        <div className="p-6 ui-border-b">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 ui-logo-grad rounded-lg flex items-center justify-center">
               <Zap className="w-6 h-6" />
             </div>
             <div>
               <h1 className="font-semibold">AI Career Assistant</h1>
-              <p className="text-xs text-purple-300">Your success partner</p>
+              <p className="text-xs ui-text-soft">Your success partner</p>
             </div>
           </div>
         </div>
@@ -1464,8 +1470,8 @@ export default function App() {
                 }}
                 className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg transition-all group ${
                   activeTab === item.id
-                    ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/30'
-                    : 'text-gray-300 hover:bg-purple-500/10 hover:text-white'
+                    ? 'ui-nav-active'
+                    : 'ui-nav-item'
                 }`}
               >
                 <div className="flex items-center gap-3">
@@ -1480,15 +1486,15 @@ export default function App() {
           })}
         </nav>
 
-        <div className="p-4 border-t border-purple-500/20">
-          <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg p-4 relative overflow-hidden group cursor-pointer">
+        <div className="p-4 ui-border-t">
+          <div className="ui-btn-gradient rounded-lg p-4 relative overflow-hidden group cursor-pointer">
             <div className="absolute inset-0 bg-gradient-to-r from-pink-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity" />
             <div className="relative">
               <div className="flex items-center gap-2 mb-2">
                 <Crown className="w-4 h-4" />
                 <p className="text-sm font-medium">Upgrade to Pro</p>
               </div>
-              <p className="text-xs text-purple-100 mb-3">Get unlimited access to all features</p>
+              <p className="text-xs ui-text-faint mb-3">Get unlimited access to all features</p>
               <button
                 onClick={() => setShowUpgradeDialog(true)}
                 className="w-full bg-white text-purple-600 rounded-lg py-2 text-sm font-medium hover:bg-purple-50 transition-colors"
@@ -1499,7 +1505,7 @@ export default function App() {
           </div>
         </div>
 
-        <div className="p-4 flex items-center gap-2 border-t border-purple-500/20">
+        <div className="p-4 flex items-center gap-2 ui-border-t">
           <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-sm font-bold">
             {profileAvatarLetter}
           </div>
@@ -1510,7 +1516,7 @@ export default function App() {
           <button
             type="button"
             onClick={() => setTheme(isLight ? 'dark' : 'light')}
-            className="w-9 h-9 rounded-lg hover:bg-purple-500/20 transition-colors flex items-center justify-center shrink-0"
+            className="w-9 h-9 rounded-lg hover:ui-bg-soft transition-colors flex items-center justify-center shrink-0"
             title={isLight ? 'Dark mode' : 'Light mode'}
             aria-label="Toggle theme"
           >
@@ -1519,7 +1525,7 @@ export default function App() {
           <button
             type="button"
             onClick={() => setShowShortcutsModal(true)}
-            className="w-9 h-9 rounded-lg hover:bg-purple-500/20 transition-colors flex items-center justify-center shrink-0"
+            className="w-9 h-9 rounded-lg hover:ui-bg-soft transition-colors flex items-center justify-center shrink-0"
             title="Keyboard shortcuts (?)"
             aria-label="Keyboard shortcuts"
           >
@@ -1528,7 +1534,7 @@ export default function App() {
           <div className="relative notification-container">
             <button
               onClick={() => setShowNotifications(!showNotifications)}
-              className="w-9 h-9 rounded-lg hover:bg-purple-500/20 transition-colors flex items-center justify-center relative"
+              className="w-9 h-9 rounded-lg hover:ui-bg-soft transition-colors flex items-center justify-center relative"
             >
               <Bell className="w-5 h-5 text-gray-400 hover:text-white transition-colors" />
               {unreadCount > 0 && (
@@ -1540,8 +1546,8 @@ export default function App() {
 
             {/* Notification Dropdown */}
             {showNotifications && (
-              <div className="absolute bottom-full left-0 mb-2 w-80 bg-slate-800 border border-purple-500/30 rounded-xl shadow-2xl overflow-hidden z-50 animate-[fadeIn_0.2s_ease-out]">
-                <div className="p-4 border-b border-purple-500/20 flex items-center justify-between">
+              <div className="absolute bottom-full left-0 mb-2 w-80 bg-slate-800 ui-border-strong rounded-xl shadow-2xl overflow-hidden z-50 animate-[fadeIn_0.2s_ease-out]">
+                <div className="p-4 ui-border-b flex items-center justify-between">
                   <div>
                     <h4 className="font-semibold">Notifications</h4>
                     <p className="text-xs text-gray-400">{unreadCount} unread</p>
@@ -1549,7 +1555,7 @@ export default function App() {
                   {notifications.length > 0 && (
                     <button
                       onClick={clearAllNotifications}
-                      className="text-xs text-purple-400 hover:text-purple-300 transition-colors"
+                      className="text-xs ui-text-icon hover:ui-text-soft transition-colors"
                     >
                       Clear all
                     </button>
@@ -1561,7 +1567,7 @@ export default function App() {
                       <div
                         key={notif.id}
                         onClick={() => markNotificationAsRead(notif.id)}
-                        className={`p-4 border-b border-purple-500/10 hover:bg-purple-500/10 transition-colors cursor-pointer ${
+                        className={`p-4 ui-row-divide hover:bg-purple-500/10 transition-colors cursor-pointer ${
                           !notif.read ? 'bg-purple-500/5' : ''
                         }`}
                       >
@@ -1597,11 +1603,11 @@ export default function App() {
               <div className="flex items-center justify-between mb-8">
                 <div>
                   <h2 className="text-4xl font-bold mb-2">Career Goals</h2>
-                  <p className="text-purple-200">Set and track your career objectives</p>
+                  <p className="ui-text-dim">Set and track your career objectives</p>
                 </div>
                 <button
                   onClick={() => setShowGoalDialog(true)}
-                  className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg px-6 py-3 font-medium hover:shadow-lg hover:shadow-purple-500/50 transition-all flex items-center gap-2"
+                  className="ui-btn-gradient rounded-lg px-6 py-3 font-medium transition-all flex items-center gap-2"
                 >
                   <Plus className="w-5 h-5" />
                   Add New Goal
@@ -1610,9 +1616,9 @@ export default function App() {
 
               {/* Stats Overview */}
               <div className="grid grid-cols-3 gap-4 mb-8">
-                <div className="bg-gradient-to-br from-purple-600/20 to-pink-600/20 border border-purple-500/30 rounded-xl p-6">
+                <div className="ui-tint rounded-xl p-6">
                   <div className="flex items-center justify-between mb-2">
-                    <Target className="w-8 h-8 text-purple-400" />
+                    <Target className="w-8 h-8 ui-text-icon" />
                   </div>
                   <p className="text-3xl font-bold mb-1">{careerGoals.length}</p>
                   <p className="text-sm text-gray-300">Total Goals</p>
@@ -1643,7 +1649,7 @@ export default function App() {
                     onClick={() => setGoalFilter(filter)}
                     className={`px-4 py-2 rounded-lg font-medium transition-all capitalize ${
                       goalFilter === filter
-                        ? 'bg-purple-600 text-white'
+                        ? 'ui-accent-fill text-white'
                         : 'bg-slate-800/50 text-gray-300 hover:bg-slate-800'
                     }`}
                   >
@@ -1675,14 +1681,14 @@ export default function App() {
                             ? 'border-green-500/30 bg-green-500/5'
                             : isOverdue
                             ? 'border-red-500/30 bg-red-500/5'
-                            : 'border-purple-500/20 hover:border-purple-500/40'
+                            : 'ui-border ui-card-hover-border'
                         }`}
                       >
                         <div className="flex items-start gap-4">
                           <div className={`w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                            goal.completed ? 'bg-green-500/20' : 'bg-purple-500/20'
+                            goal.completed ? 'bg-green-500/20' : 'ui-bg-soft'
                           }`}>
-                            <CategoryIcon className={`w-6 h-6 ${goal.completed ? 'text-green-400' : 'text-purple-400'}`} />
+                            <CategoryIcon className={`w-6 h-6 ${goal.completed ? 'text-green-400' : 'ui-text-icon'}`} />
                           </div>
 
                           <div className="flex-1">
@@ -1695,7 +1701,7 @@ export default function App() {
                                   <p className="text-sm text-gray-400 mb-3">{goal.description}</p>
                                 )}
                                 <div className="flex items-center gap-4 text-xs text-gray-500">
-                                  <span className="capitalize px-2 py-1 bg-purple-500/20 text-purple-300 rounded">
+                                  <span className="capitalize px-2 py-1 ui-bg-soft ui-text-soft rounded">
                                     {goal.category}
                                   </span>
                                   <span className={isOverdue ? 'text-red-400' : 'text-gray-400'}>
@@ -1708,7 +1714,7 @@ export default function App() {
                               <div className="flex items-center gap-2">
                                 <button
                                   onClick={() => handleEditGoal(goal)}
-                                  className="w-8 h-8 rounded-lg hover:bg-purple-500/20 transition-colors flex items-center justify-center"
+                                  className="w-8 h-8 rounded-lg hover:ui-bg-soft transition-colors flex items-center justify-center"
                                   title="Edit goal"
                                 >
                                   <Edit className="w-4 h-4 text-gray-400 hover:text-white" />
@@ -1735,7 +1741,7 @@ export default function App() {
                                     className={`h-full transition-all ${
                                       goal.completed
                                         ? 'bg-gradient-to-r from-green-500 to-emerald-500'
-                                        : 'bg-gradient-to-r from-purple-500 to-pink-500'
+                                        : 'bg-gradient-to-r ui-progress'
                                     }`}
                                     style={{ width: `${goal.progress}%` }}
                                   />
@@ -1773,8 +1779,8 @@ export default function App() {
                     );
                   })
                 ) : (
-                  <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-12 border border-purple-500/20 text-center">
-                    <Target className="w-16 h-16 mx-auto mb-4 text-purple-400 opacity-50" />
+                  <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-12 ui-border text-center">
+                    <Target className="w-16 h-16 mx-auto mb-4 ui-text-icon opacity-50" />
                     <h3 className="text-xl font-semibold mb-2">No Goals Yet</h3>
                     <p className="text-gray-400 mb-6">
                       {goalFilter === 'all'
@@ -1785,7 +1791,7 @@ export default function App() {
                     </p>
                     <button
                       onClick={() => goalFilter === 'all' ? setShowGoalDialog(true) : setGoalFilter('all')}
-                      className="bg-purple-600 hover:bg-purple-700 px-6 py-3 rounded-lg font-medium transition-colors inline-flex items-center gap-2"
+                      className="ui-btn-solid px-6 py-3 rounded-lg font-medium transition-colors inline-flex items-center gap-2"
                     >
                       <Plus className="w-5 h-5" />
                       {goalFilter === 'all' ? 'Add Your First Goal' : 'View All Goals'}
@@ -1799,16 +1805,16 @@ export default function App() {
           {activeTab === 'resume' && (
             <div className="mb-8">
               <h2 className="text-4xl font-bold mb-2">Resume Builder</h2>
-              <p className="text-purple-200 mb-8">Create and customize your professional resume</p>
+              <p className="ui-text-dim mb-8">Create and customize your professional resume</p>
 
-              <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-8 border border-purple-500/20">
+              <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-8 ui-border">
                 <div className="text-center py-12">
-                  <FileText className="w-16 h-16 mx-auto mb-4 text-purple-400 opacity-50" />
+                  <FileText className="w-16 h-16 mx-auto mb-4 ui-text-icon opacity-50" />
                   <h3 className="text-xl font-semibold mb-2">Resume Builder Coming Soon</h3>
                   <p className="text-gray-400 mb-6">Build professional resumes with our AI-powered builder.</p>
                   <button
                     onClick={() => setActiveTab('dashboard')}
-                    className="bg-purple-600 hover:bg-purple-700 px-6 py-3 rounded-lg font-medium transition-colors"
+                    className="ui-btn-solid px-6 py-3 rounded-lg font-medium transition-colors"
                   >
                     Back to Dashboard
                   </button>
@@ -1822,12 +1828,12 @@ export default function App() {
               <div className="flex items-center justify-between mb-8">
                 <div>
                   <h2 className="text-4xl font-bold mb-2">Interview Preparation</h2>
-                  <p className="text-purple-200">Practice with AI-powered mock interviews</p>
+                  <p className="ui-text-dim">Practice with AI-powered mock interviews</p>
                 </div>
                 {!interviewActive && (
                   <button
                     onClick={handleStartInterview}
-                    className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg px-6 py-3 font-medium hover:shadow-lg hover:shadow-purple-500/50 transition-all flex items-center gap-2"
+                    className="ui-btn-gradient rounded-lg px-6 py-3 font-medium transition-all flex items-center gap-2"
                   >
                     <Play className="w-5 h-5" />
                     Start Mock Interview
@@ -1839,7 +1845,7 @@ export default function App() {
                 <>
                   {/* Setup Section */}
                   <div className="grid grid-cols-2 gap-6 mb-8">
-                    <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-purple-500/20">
+                    <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 ui-border">
                       <h3 className="font-semibold mb-4">Select Interview Type</h3>
                       <div className="space-y-3">
                         {(['behavioral', 'technical', 'mixed'] as const).map((type) => (
@@ -1848,8 +1854,8 @@ export default function App() {
                             onClick={() => setInterviewType(type)}
                             className={`w-full p-4 rounded-lg border transition-all text-left ${
                               interviewType === type
-                                ? 'bg-purple-600 border-purple-500 text-white'
-                                : 'bg-slate-900/50 border-purple-500/30 hover:border-purple-500/60'
+                                ? 'ui-toggle-on'
+                                : 'ui-toggle-off'
                             }`}
                           >
                             <p className="font-medium capitalize mb-1">{type} Questions</p>
@@ -1863,7 +1869,7 @@ export default function App() {
                       </div>
                     </div>
 
-                    <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-purple-500/20">
+                    <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 ui-border">
                       <h3 className="font-semibold mb-4">Select Job Role</h3>
                       <div className="space-y-2">
                         {['Software Engineer', 'Frontend Developer', 'Data Scientist'].map((role) => (
@@ -1872,8 +1878,8 @@ export default function App() {
                             onClick={() => setInterviewRole(role)}
                             className={`w-full p-3 rounded-lg border transition-all text-left ${
                               interviewRole === role
-                                ? 'bg-purple-600 border-purple-500 text-white'
-                                : 'bg-slate-900/50 border-purple-500/30 hover:border-purple-500/60'
+                                ? 'ui-toggle-on'
+                                : 'ui-toggle-off'
                             }`}
                           >
                             {role}
@@ -1903,7 +1909,7 @@ export default function App() {
                         {interviewSessions.map((session) => (
                           <div
                             key={session.id}
-                            className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-purple-500/20 hover:border-purple-500/40 transition-colors"
+                            className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 ui-border ui-card-hover-border transition-colors"
                           >
                             <div className="flex items-start justify-between mb-4">
                               <div>
@@ -1926,8 +1932,8 @@ export default function App() {
                         ))}
                       </div>
                     ) : (
-                      <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-8 border border-purple-500/20 text-center">
-                        <BarChart3 className="w-12 h-12 mx-auto mb-3 text-purple-400 opacity-50" />
+                      <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-8 ui-border text-center">
+                        <BarChart3 className="w-12 h-12 mx-auto mb-3 ui-text-icon opacity-50" />
                         <p className="text-gray-400">No interview sessions yet. Start your first mock interview!</p>
                       </div>
                     )}
@@ -1939,8 +1945,8 @@ export default function App() {
                   <div className="mb-6">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-purple-500/20 rounded-full flex items-center justify-center">
-                          <Bot className="w-6 h-6 text-purple-400" />
+                        <div className="w-10 h-10 ui-bg-soft rounded-full flex items-center justify-center">
+                          <Bot className="w-6 h-6 ui-text-icon" />
                         </div>
                         <div>
                           <p className="text-sm text-gray-400">AI Interview Coach</p>
@@ -1964,7 +1970,7 @@ export default function App() {
                       </div>
                       <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all"
+                          className="h-full bg-gradient-to-r ui-progress transition-all"
                           style={{ width: `${interviewProgress}%` }}
                         />
                       </div>
@@ -1972,13 +1978,13 @@ export default function App() {
                   </div>
 
                   {/* Current Question */}
-                  <div className="bg-gradient-to-br from-purple-600/10 to-pink-600/10 border border-purple-500/30 rounded-2xl p-8 mb-6">
+                  <div className="ui-tint rounded-2xl p-8 mb-6">
                     <div className="flex items-start gap-4 mb-6">
-                      <div className="w-12 h-12 bg-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
+                      <div className="w-12 h-12 ui-accent-fill rounded-full flex items-center justify-center flex-shrink-0">
                         <Bot className="w-6 h-6 text-white" />
                       </div>
                       <div className="flex-1">
-                        <p className="text-sm text-purple-300 mb-2">AI Interviewer</p>
+                        <p className="text-sm ui-text-soft mb-2">AI Interviewer</p>
                         <h3 className="text-xl font-semibold leading-relaxed">
                           {interviewQuestionsLoading
                             ? 'Generating personalized questions with Gemini...'
@@ -1997,12 +2003,12 @@ export default function App() {
                         onChange={(e) => setUserAnswer(e.target.value)}
                         placeholder="Type your answer here... (Tip: Use the STAR method for behavioral questions - Situation, Task, Action, Result)"
                         disabled={isThinking || interviewQuestionsLoading}
-                        className="w-full bg-slate-900/50 border border-purple-500/30 rounded-lg px-4 py-3 text-sm resize-none focus:outline-none focus:border-purple-500 transition-colors min-h-[150px] disabled:opacity-50"
+                        className="w-full bg-slate-900/50 ui-border-strong rounded-lg px-4 py-3 text-sm resize-none focus:outline-none ui-focus transition-colors min-h-[150px] disabled:opacity-50"
                       />
                       <div className="flex items-center justify-between mt-3">
                         <p className="text-xs text-gray-400 flex flex-wrap items-center gap-x-4 gap-y-1">
                           <span>{userAnswer.trim().split(' ').filter(w => w).length} words</span>
-                          <span className="flex items-center gap-1.5 text-purple-300">
+                          <span className="flex items-center gap-1.5 ui-text-soft">
                             <Clock className="w-3.5 h-3.5" />
                             {formatAnswerElapsed(answerSeconds)}
                           </span>
@@ -2015,7 +2021,7 @@ export default function App() {
                             interviewQuestionsLoading ||
                             resolvedInterviewQuestions.length === 0
                           }
-                          className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg font-medium hover:shadow-lg hover:shadow-purple-500/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="flex items-center gap-2 px-6 py-3 ui-btn-gradient rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {isThinking ? (
                             <>
@@ -2039,7 +2045,7 @@ export default function App() {
                       <h3 className="text-xl font-semibold mb-4">Previous Answers & Feedback</h3>
                       <div className="space-y-4">
                         {interviewAnswers.map((item, idx) => (
-                          <div key={idx} className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-purple-500/20">
+                          <div key={idx} className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 ui-border">
                             <div className="flex items-start justify-between mb-4">
                               <div className="flex-1">
                                 <p className="text-sm text-gray-400 mb-2">Question {idx + 1}</p>
@@ -2080,16 +2086,16 @@ export default function App() {
           {activeTab === 'networking' && (
             <div className="mb-8">
               <h2 className="text-4xl font-bold mb-2">Networking</h2>
-              <p className="text-purple-200 mb-8">Build and manage your professional network</p>
+              <p className="ui-text-dim mb-8">Build and manage your professional network</p>
 
-              <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-8 border border-purple-500/20">
+              <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-8 ui-border">
                 <div className="text-center py-12">
-                  <Users className="w-16 h-16 mx-auto mb-4 text-purple-400 opacity-50" />
+                  <Users className="w-16 h-16 mx-auto mb-4 ui-text-icon opacity-50" />
                   <h3 className="text-xl font-semibold mb-2">Networking Tools Coming Soon</h3>
                   <p className="text-gray-400 mb-6">Connect with professionals and expand your network.</p>
                   <button
                     onClick={() => setActiveTab('dashboard')}
-                    className="bg-purple-600 hover:bg-purple-700 px-6 py-3 rounded-lg font-medium transition-colors"
+                    className="ui-btn-solid px-6 py-3 rounded-lg font-medium transition-colors"
                   >
                     Back to Dashboard
                   </button>
@@ -2101,11 +2107,11 @@ export default function App() {
           {activeTab === 'settings' && (
             <div className="mb-8">
               <h2 className="text-4xl font-bold mb-2">Settings</h2>
-              <p className="text-purple-200 mb-8">Manage your profile and preferences</p>
+              <p className="ui-text-dim mb-8">Manage your profile and preferences</p>
 
-              <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-8 border border-purple-500/20 max-w-xl">
+              <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-8 ui-border max-w-xl">
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="w-14 h-14 bg-gradient-to-br from-purple-600 to-pink-600 rounded-full flex items-center justify-center text-xl font-bold shrink-0">
+                  <div className="w-14 h-14 ui-profile-grad rounded-full flex items-center justify-center text-xl font-bold shrink-0">
                     {profileAvatarLetter}
                   </div>
                   <div>
@@ -2114,17 +2120,17 @@ export default function App() {
                   </div>
                 </div>
 
-                <label className="block text-sm font-medium text-purple-200 mb-2">Display name</label>
+                <label className="block text-sm font-medium ui-text-dim mb-2">Display name</label>
                 <input
                   type="text"
                   value={userProfile.displayName}
                   onChange={(e) => setUserProfile((p) => ({ ...p, displayName: e.target.value }))}
-                  className="w-full bg-slate-900/50 border border-purple-500/30 rounded-xl px-4 py-3 text-sm mb-6 focus:outline-none focus:border-purple-500 transition-colors"
+                  className="w-full bg-slate-900/50 ui-border-strong rounded-xl px-4 py-3 text-sm mb-6 focus:outline-none ui-focus transition-colors"
                   placeholder="Your name"
                   autoComplete="name"
                 />
 
-                <div className="rounded-xl bg-slate-900/40 border border-purple-500/20 p-4 mb-6">
+                <div className="rounded-xl bg-slate-900/40 ui-border p-4 mb-6">
                   <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Target role</p>
                   <p className="text-white font-medium">{jobRole}</p>
                   <p className="text-xs text-gray-500 mt-2">
@@ -2132,7 +2138,37 @@ export default function App() {
                   </p>
                 </div>
 
-                <div className="flex flex-wrap gap-3 items-center justify-between pt-2 border-t border-purple-500/15">
+                <div className="rounded-xl bg-slate-900/40 ui-border p-4 mb-6">
+                  <p className="text-xs text-gray-400 uppercase tracking-wide mb-3">Accent palette</p>
+                  <div className="flex flex-col gap-2">
+                    {(
+                      [
+                        { id: 'aurora' as const, label: 'Aurora', hint: 'Purple & pink' },
+                        { id: 'navy-teal' as const, label: 'Navy & teal', hint: 'Calm, premium' },
+                        { id: 'charcoal-violet' as const, label: 'Charcoal & violet', hint: 'Bold, cinematic' },
+                      ] as const
+                    ).map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => {
+                          setColorPalette(opt.id);
+                          toast.success(`Color palette: ${opt.label}`);
+                        }}
+                        className={`flex w-full flex-wrap items-center justify-between gap-2 rounded-lg px-4 py-3 text-left text-sm transition-colors ${
+                          colorPalette === opt.id
+                            ? 'ui-border-strong ui-bg-soft ring-1 ring-inset ring-white/10'
+                            : 'ui-border hover:bg-slate-800/60'
+                        }`}
+                      >
+                        <span className="font-medium text-white">{opt.label}</span>
+                        <span className="text-xs text-gray-500">{opt.hint}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-3 items-center justify-between pt-2 ui-border-t-faint">
                   <div className="text-sm text-gray-400">
                     Applications logged:{' '}
                     <span className="text-white font-semibold">{userProfile.applicationsCount}</span>
@@ -2140,7 +2176,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => setActiveTab('dashboard')}
-                    className="bg-purple-600 hover:bg-purple-700 px-5 py-2.5 rounded-lg text-sm font-medium transition-colors"
+                    className="ui-btn-solid px-5 py-2.5 rounded-lg text-sm font-medium transition-colors"
                   >
                     Back to Dashboard
                   </button>
@@ -2154,7 +2190,7 @@ export default function App() {
           {/* Header */}
           <div className="mb-8">
             <h2 className="text-4xl font-bold mb-2">Hi, {greetingFirstName}! 👋</h2>
-            <p className="text-purple-200">Ready to take your career to the next level? Let's see what we can do for your goal job.</p>
+            <p className="ui-text-dim">Ready to take your career to the next level? Let's see what we can do for your goal job.</p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
@@ -2173,9 +2209,9 @@ export default function App() {
                 </p>
               </div>
             </div>
-            <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-5 border border-purple-500/20 flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center">
-                <Zap className="w-6 h-6 text-purple-400" />
+            <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-5 ui-border flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl ui-bg-soft flex items-center justify-center">
+                <Zap className="w-6 h-6 ui-text-icon" />
               </div>
               <div>
                 <p className="text-sm text-gray-400">Keep the momentum</p>
@@ -2201,19 +2237,19 @@ export default function App() {
 
           {/* Analyzing Progress */}
           {isAnalyzing && (
-            <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-8 mb-8 border border-purple-500/20">
+            <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-8 mb-8 ui-border">
               <div className="flex flex-col items-center justify-center py-8">
-                <div className="w-20 h-20 bg-purple-500/20 rounded-full flex items-center justify-center mb-6 relative">
-                  <Sparkles className="w-10 h-10 text-purple-400 animate-pulse" />
-                  <div className="absolute inset-0 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin"></div>
+                <div className="w-20 h-20 ui-bg-soft rounded-full flex items-center justify-center mb-6 relative">
+                  <Sparkles className="w-10 h-10 ui-text-icon animate-pulse" />
+                  <div className="absolute inset-0 ui-spinner" />
                 </div>
                 <h3 className="text-xl font-semibold mb-2">Analyzing Your Resume</h3>
-                <p className="text-purple-200 text-center mb-6">
+                <p className="ui-text-dim text-center mb-6">
                   Our AI is reviewing your resume for the {jobRole} position...
                 </p>
                 <div className="w-full max-w-md bg-slate-700/50 rounded-full h-2 overflow-hidden">
                   <div
-                    className="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-[2000ms] ease-out"
+                    className="h-full bg-gradient-to-r ui-progress transition-all duration-[2000ms] ease-out"
                     style={{ width: '85%' }}
                   ></div>
                 </div>
@@ -2222,7 +2258,7 @@ export default function App() {
           )}
 
           {!isAnalyzing && (
-          <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-8 mb-8 border border-purple-500/20">
+          <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-8 mb-8 ui-border">
             <div className="grid grid-cols-2 gap-6">
               {/* Upload Area */}
               <div>
@@ -2230,7 +2266,7 @@ export default function App() {
                 <div
                   onDrop={handleDrop}
                   onDragOver={(e) => e.preventDefault()}
-                  className="border-2 border-dashed border-purple-500/30 rounded-xl p-8 text-center hover:border-purple-500/60 transition-colors cursor-pointer bg-slate-900/30"
+                  className="ui-dropzone rounded-xl p-8 text-center ui-border-hover transition-colors cursor-pointer bg-slate-900/30"
                 >
                   <input
                     type="file"
@@ -2240,11 +2276,11 @@ export default function App() {
                   />
                   <label htmlFor="resume-upload" className="cursor-pointer">
                     <div className="flex flex-col items-center gap-3">
-                      <div className="w-16 h-16 bg-purple-500/20 rounded-full flex items-center justify-center">
+                      <div className="w-16 h-16 ui-bg-soft rounded-full flex items-center justify-center">
                         {pastedText && !selectedFile ? (
-                          <Type className="w-8 h-8 text-purple-400" />
+                          <Type className="w-8 h-8 ui-text-icon" />
                         ) : (
-                          <Upload className="w-8 h-8 text-purple-400" />
+                          <Upload className="w-8 h-8 ui-text-icon" />
                         )}
                       </div>
                       {selectedFile ? (
@@ -2261,7 +2297,7 @@ export default function App() {
                               e.preventDefault();
                               setSelectedFile(null);
                             }}
-                            className="text-xs text-purple-400 hover:text-purple-300 transition-colors"
+                            className="text-xs ui-text-icon hover:ui-text-soft transition-colors"
                           >
                             Remove file
                           </button>
@@ -2280,7 +2316,7 @@ export default function App() {
                               e.preventDefault();
                               setPastedText('');
                             }}
-                            className="text-xs text-purple-400 hover:text-purple-300 transition-colors"
+                            className="text-xs ui-text-icon hover:ui-text-soft transition-colors"
                           >
                             Remove text
                           </button>
@@ -2301,7 +2337,7 @@ export default function App() {
                 </div>
                 <button
                   onClick={() => setShowPasteDialog(true)}
-                  className="w-full mt-4 bg-slate-700/50 hover:bg-slate-700 border border-purple-500/20 rounded-lg py-3 text-sm font-medium transition-all flex items-center justify-center gap-2"
+                  className="w-full mt-4 bg-slate-700/50 hover:bg-slate-700 ui-border rounded-lg py-3 text-sm font-medium transition-all flex items-center justify-center gap-2"
                 >
                   <Type className="w-4 h-4" />
                   Paste Resume Text
@@ -2315,13 +2351,13 @@ export default function App() {
                   <div className="relative" ref={dropdownRef}>
                     <button
                       onClick={() => setDropdownOpen(!dropdownOpen)}
-                      className="w-full bg-slate-900/50 border border-purple-500/30 rounded-lg px-4 py-3 text-left flex items-center justify-between hover:border-purple-500/60 transition-colors"
+                      className="w-full bg-slate-900/50 ui-border-strong rounded-lg px-4 py-3 text-left flex items-center justify-between ui-border-hover transition-colors"
                     >
                       <span>{jobRole}</span>
                       <ChevronDown className={`w-5 h-5 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
                     </button>
                     {dropdownOpen && (
-                      <div className="absolute top-full mt-2 w-full bg-slate-800 border border-purple-500/30 rounded-lg shadow-2xl max-h-64 overflow-y-auto z-10">
+                      <div className="absolute top-full mt-2 w-full bg-slate-800 ui-border-strong rounded-lg shadow-2xl max-h-64 overflow-y-auto z-10">
                         {jobRoles.map((role) => (
                           <button
                             key={role}
@@ -2329,8 +2365,8 @@ export default function App() {
                               setJobRole(role);
                               setDropdownOpen(false);
                             }}
-                            className={`w-full px-4 py-3 text-left hover:bg-purple-500/20 transition-colors ${
-                              jobRole === role ? 'bg-purple-500/30 text-purple-200' : ''
+                            className={`w-full px-4 py-3 text-left hover:ui-bg-soft transition-colors ${
+                              jobRole === role ? 'ui-chip-active ui-text-dim' : ''
                             }`}
                           >
                             {role}
@@ -2345,7 +2381,7 @@ export default function App() {
                   <button
                     onClick={handleAnalyze}
                     disabled={(!selectedFile && !pastedText.trim()) || isAnalyzing}
-                    className="w-full bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg py-4 font-semibold hover:shadow-lg hover:shadow-purple-500/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    className="w-full ui-btn-gradient rounded-lg py-4 font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     {isAnalyzing ? (
                       <>
@@ -2366,7 +2402,7 @@ export default function App() {
                     <button
                       type="button"
                       onClick={() => setShowPrivacyDetails((o) => !o)}
-                      className="text-xs text-purple-400 hover:text-purple-300 transition-colors"
+                      className="text-xs ui-text-icon hover:ui-text-soft transition-colors"
                     >
                       {showPrivacyDetails ? 'Hide' : 'What we send to the AI'}
                     </button>
@@ -2387,25 +2423,25 @@ export default function App() {
 
           {/* Stats Card */}
           {showAnalysis && (
-            <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl p-6 mb-8 shadow-2xl shadow-purple-500/30">
+            <div className="ui-btn-gradient rounded-2xl p-6 mb-8 shadow-2xl ui-shadow-accent">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <p className="text-purple-100 text-sm mb-1">Your Progress</p>
+                  <p className="ui-text-faint text-sm mb-1">Your Progress</p>
                   <h3 className="text-2xl font-bold">Career Readiness Score</h3>
                 </div>
-                <Award className="w-12 h-12 text-purple-200" />
+                <Award className="w-12 h-12 ui-text-dim" />
               </div>
               <div className="grid grid-cols-3 gap-4">
                 <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3">
-                  <p className="text-sm text-purple-200 mb-1">Resume Score</p>
+                  <p className="text-sm ui-text-dim mb-1">Resume Score</p>
                   <p className="text-2xl font-bold">{resumeScorePercent}%</p>
                 </div>
                 <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3">
-                  <p className="text-sm text-purple-200 mb-1">Interview Prep</p>
+                  <p className="text-sm ui-text-dim mb-1">Interview Prep</p>
                   <p className="text-2xl font-bold">78%</p>
                 </div>
                 <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3">
-                  <p className="text-sm text-purple-200 mb-1">Network Size</p>
+                  <p className="text-sm ui-text-dim mb-1">Network Size</p>
                   <p className="text-2xl font-bold">145</p>
                 </div>
               </div>
@@ -2418,7 +2454,7 @@ export default function App() {
             <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
               <h3 className="text-2xl font-semibold">Your Analysis Results</h3>
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm text-purple-300 bg-purple-500/20 px-3 py-1 rounded-full">
+                <span className="text-sm ui-text-soft ui-bg-soft px-3 py-1 rounded-full">
                   Analyzed for: {jobRole}
                 </span>
                 {resumeAnalysisResult && (
@@ -2431,7 +2467,7 @@ export default function App() {
                         downloadTextFile(`resume-analysis-${safe}.md`, md, 'text/markdown;charset=utf-8');
                         toast.success('Markdown downloaded');
                       }}
-                      className="text-sm flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700/80 hover:bg-slate-600 border border-purple-500/30 transition-colors"
+                      className="text-sm flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700/80 hover:bg-slate-600 ui-border-strong transition-colors"
                     >
                       <Download className="w-4 h-4" />
                       Export .md
@@ -2442,7 +2478,7 @@ export default function App() {
                         openPrintableAnalysis(jobRole, resumeAnalysisResult);
                         toast.info('Use your browser print dialog → Save as PDF');
                       }}
-                      className="text-sm flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700/80 hover:bg-slate-600 border border-purple-500/30 transition-colors"
+                      className="text-sm flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700/80 hover:bg-slate-600 ui-border-strong transition-colors"
                     >
                       <Printer className="w-4 h-4" />
                       Print / PDF
@@ -2462,7 +2498,7 @@ export default function App() {
                 </button>
               </div>
             </div>
-            <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-8 border border-purple-500/20">
+            <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-8 ui-border">
               <div className="flex items-center gap-8 mb-6">
                 <div className="relative">
                   <svg className="w-40 h-40" viewBox="0 0 160 160">
@@ -2504,7 +2540,7 @@ export default function App() {
                       x="80"
                       y="105"
                       textAnchor="middle"
-                      className="fill-purple-300"
+                      className="ui-fill-svg"
                       style={{ fontSize: '14px' }}
                     >
                       / 10
@@ -2513,7 +2549,7 @@ export default function App() {
                 </div>
                 <div className="flex-1">
                   <h4 className="text-xl font-semibold mb-2">Overall Score for {jobRole}</h4>
-                  <p className="text-purple-200 mb-4">{resumeSummary}</p>
+                  <p className="ui-text-dim mb-4">{resumeSummary}</p>
                   <div className="flex gap-2">
                     <span className="px-3 py-1 bg-green-500/20 text-green-300 rounded-full text-sm">{matchLabel}</span>
                     <span className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-sm">{percentileLabel}</span>
@@ -2563,7 +2599,7 @@ export default function App() {
           {showAnalysis && (
             <div>
             <h3 className="text-2xl font-semibold mb-4">Recommended Tips</h3>
-            <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-purple-500/20">
+            <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 ui-border">
               <div className="flex items-center gap-2 mb-4">
                 <Lightbulb className="w-6 h-6 text-yellow-400" />
                 <h5 className="font-semibold text-lg">Interview Preparation Tips</h5>
@@ -2588,11 +2624,11 @@ export default function App() {
 
       {/* Right Sidebar */}
       <aside
-        className={`fixed right-0 top-0 h-screen w-80 backdrop-blur-xl border-l p-6 overflow-y-auto ${shellBg}`}
+        className="fixed right-0 top-0 h-screen w-80 border-l p-6 overflow-y-auto ui-shell-aside-r"
       >
         {/* Profile Section */}
         <div className="mb-6">
-          <div className="bg-gradient-to-br from-purple-600 to-pink-600 rounded-2xl p-6 text-center relative">
+          <div className="ui-profile-grad rounded-2xl p-6 text-center relative">
             {unreadCount > 0 && (
               <div
                 className="absolute top-4 right-4 min-w-[1.5rem] h-6 px-1 bg-green-500 rounded-full flex items-center justify-center text-xs font-bold border-2 border-white"
@@ -2605,7 +2641,7 @@ export default function App() {
               {profileAvatarLetter}
             </div>
             <h3 className="font-semibold text-lg mb-1">{userProfile.displayName.trim() || 'Your name'}</h3>
-            <p className="text-sm text-purple-200 mb-4">{jobRole}</p>
+            <p className="text-sm ui-text-dim mb-4">{jobRole}</p>
             <div className="flex gap-2 justify-center">
               <button
                 type="button"
@@ -2624,14 +2660,14 @@ export default function App() {
                 className="bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2 flex-1 hover:bg-white/15 transition-colors text-left"
                 title="Includes analyses you run plus taps here to log submissions"
               >
-                <p className="text-xs text-purple-200">Applications</p>
+                <p className="text-xs ui-text-dim">Applications</p>
                 <p className="text-lg font-bold">{userProfile.applicationsCount}</p>
               </button>
               <div
                 className="bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2 flex-1 text-left"
                 title="Calendar interviews scheduled plus mock interview sessions completed"
               >
-                <p className="text-xs text-purple-200">Interviews</p>
+                <p className="text-xs ui-text-dim">Interviews</p>
                 <p className="text-lg font-bold">{interviewsStat}</p>
               </div>
             </div>
@@ -2642,10 +2678,10 @@ export default function App() {
         <div className="mb-6">
           <div className="flex items-center justify-between mb-4">
             <h4 className="font-semibold">Schedule</h4>
-            <Calendar className="w-5 h-5 text-purple-400" />
+            <Calendar className="w-5 h-5 ui-text-icon" />
           </div>
 
-          <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-4 border border-purple-500/20 mb-4">
+          <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-4 ui-border mb-4">
             <div className="grid grid-cols-7 gap-1 mb-2">
               {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => (
                 <div key={i} className="text-center text-xs text-gray-400 p-1">
@@ -2669,11 +2705,11 @@ export default function App() {
                     disabled={!isCurrentMonth}
                     className={`aspect-square rounded-lg text-xs flex items-center justify-center relative transition-all ${
                       isSelected
-                        ? 'bg-purple-600 text-white'
+                        ? 'ui-accent-fill text-white'
                         : isToday
                         ? 'bg-blue-500/20 text-blue-300 font-semibold'
                         : isCurrentMonth
-                        ? 'hover:bg-purple-500/20 text-white'
+                        ? 'hover:ui-bg-soft text-white'
                         : 'text-gray-600 cursor-not-allowed'
                     }`}
                   >
@@ -2689,7 +2725,7 @@ export default function App() {
 
           <button
             onClick={() => setShowScheduleDialog(true)}
-            className="w-full bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg py-3 font-medium hover:shadow-lg hover:shadow-purple-500/30 transition-all flex items-center justify-center gap-2"
+            className="w-full ui-btn-gradient rounded-lg py-3 font-medium hover:shadow-lg hover:ui-shadow-accent transition-all flex items-center justify-center gap-2"
           >
             <Plus className="w-5 h-5" />
             Schedule My Interview
@@ -2705,7 +2741,7 @@ export default function App() {
             {selectedDate && (
               <button
                 onClick={() => setSelectedDate(null)}
-                className="text-xs text-purple-400 hover:text-purple-300 transition-colors"
+                className="text-xs ui-text-icon hover:ui-text-soft transition-colors"
               >
                 Show All
               </button>
@@ -2723,17 +2759,17 @@ export default function App() {
                       setSelectedEvent(originalIndex);
                       setShowEventDialog(true);
                     }}
-                    className="bg-slate-800/50 backdrop-blur-sm rounded-lg p-3 border border-purple-500/20 hover:border-purple-500/40 transition-all cursor-pointer group"
+                    className="bg-slate-800/50 backdrop-blur-sm rounded-lg p-3 ui-border ui-card-hover-border transition-all cursor-pointer group"
                   >
                     <div className="flex items-center gap-3">
                       <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${
                         event.type === 'interview' ? 'bg-green-500/20 group-hover:bg-green-500/30' :
                         event.type === 'review' ? 'bg-blue-500/20 group-hover:bg-blue-500/30' :
-                        'bg-purple-500/20 group-hover:bg-purple-500/30'
+                        'ui-bg-soft group-hover:bg-purple-500/30'
                       }`}>
                         {event.type === 'interview' ? <MessageSquare className="w-5 h-5 text-green-400" /> :
                          event.type === 'review' ? <FileText className="w-5 h-5 text-blue-400" /> :
-                         <Users className="w-5 h-5 text-purple-400" />}
+                         <Users className="w-5 h-5 ui-text-icon" />}
                       </div>
                       <div className="flex-1">
                         <p className="text-sm font-medium">{event.title}</p>
@@ -2750,7 +2786,7 @@ export default function App() {
                 <p className="text-sm">No events scheduled</p>
                 <button
                   onClick={() => setShowScheduleDialog(true)}
-                  className="text-xs text-purple-400 hover:text-purple-300 mt-2 transition-colors"
+                  className="text-xs ui-text-icon hover:ui-text-soft mt-2 transition-colors"
                 >
                   Schedule one now
                 </button>
@@ -2770,17 +2806,17 @@ export default function App() {
                   toast.info('Feature coming soon! Stay tuned.', { duration: 3000 });
                 }, 500);
               }}
-              className="w-full bg-slate-800/50 hover:bg-slate-800 border border-purple-500/20 rounded-lg py-3 px-4 text-sm font-medium text-left flex items-center justify-between group transition-all"
+              className="w-full bg-slate-800/50 hover:bg-slate-800 ui-border rounded-lg py-3 px-4 text-sm font-medium text-left flex items-center justify-between group transition-all"
             >
               <div className="flex items-center gap-3">
-                <Search className="w-4 h-4 text-purple-400" />
+                <Search className="w-4 h-4 ui-text-icon" />
                 <span>Find Jobs</span>
               </div>
               <ExternalLink className="w-4 h-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
             </button>
             <button
               onClick={() => setActiveTab('goals')}
-              className="w-full bg-slate-800/50 hover:bg-slate-800 border border-purple-500/20 rounded-lg py-3 px-4 text-sm font-medium text-left flex items-center justify-between group transition-all"
+              className="w-full bg-slate-800/50 hover:bg-slate-800 ui-border rounded-lg py-3 px-4 text-sm font-medium text-left flex items-center justify-between group transition-all"
             >
               <div className="flex items-center gap-3">
                 <TrendingUp className="w-4 h-4 text-blue-400" />
